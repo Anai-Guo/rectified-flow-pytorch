@@ -39,6 +39,8 @@ from hyper_connections import HyperConnections
 
 from assoc_scan import AssocScan
 
+from accelerate import Accelerator
+
 import gymnasium as gym
 
 # constants
@@ -198,7 +200,8 @@ class Actor(Module):
         self.readout = Readout(
             dim = hidden_dim * 2,
             num_continuous = num_actions,
-            continuous_dist_type = 'beta'
+            continuous_dist_type = 'beta',
+            continuous_dist_kwargs = dict(unimodal = True)
         )
 
     def forward(self, noised_actions, *, state, time):
@@ -563,7 +566,17 @@ def main(
     clear_videos = True,
     video_folder = './lunar-recording',
     load = False,
+    use_wandb = False,
+    cpu = True,
+    recent_rewards_window = 20,
 ):
+    accelerator = Accelerator(cpu = cpu)
+    device = accelerator.device
+
+    if use_wandb and accelerator.is_main_process:
+        import wandb
+        wandb.init(project = 'prob-flow-ppo')
+
     env = gym.make(
         env_name,
         render_mode = 'rgb_array',
@@ -616,7 +629,7 @@ def main(
     time = 0
     num_policy_updates = 0
     all_rewards = []
-    last_20_rewards = deque([], 20)
+    recent_rewards = deque(maxlen = recent_rewards_window)
 
     pbar = tqdm(range(num_episodes), desc = 'episodes')
     for eps in pbar:
@@ -693,13 +706,20 @@ def main(
 
             if done or is_last:
                 all_rewards.append(cum_rewards)
-                last_20_rewards.append(cum_rewards)
+                recent_rewards.append(cum_rewards)
 
             if done:
                 break
 
-        if len(last_20_rewards) > 0:
-            pbar.set_postfix(avg_reward = f'{sum(last_20_rewards) / len(last_20_rewards):.3f}')
+        if len(recent_rewards) > 0:
+            avg_reward = sum(recent_rewards) / len(recent_rewards)
+            pbar.set_postfix(avg_reward = f'{avg_reward:.3f}')
+
+            if use_wandb:
+                wandb.log(dict(
+                    episode = eps,
+                    reward = avg_reward
+                ))
 
         if divisible_by(eps, save_every):
             agent.save()
