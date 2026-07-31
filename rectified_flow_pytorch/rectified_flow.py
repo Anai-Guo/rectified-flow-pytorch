@@ -1313,7 +1313,9 @@ class Trainer(Module):
 
             if self.is_main and self.use_ema:
                 self.ema_model.ema_model.data_shape = unwrapped_model.data_shape
-                self.ema_model.update()
+
+                if self.accelerator.sync_gradients:
+                    self.ema_model.update()
 
             self.accelerator.wait_for_everyone()
 
