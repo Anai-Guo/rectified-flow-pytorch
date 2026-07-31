@@ -1,6 +1,4 @@
-import torch
-
-# hf datasets for easy oxford flowers training
+import fire
 
 import torchvision.transforms as T
 from torch.utils.data import Dataset
@@ -26,29 +24,52 @@ class OxfordFlowersDataset(Dataset):
         tensor = self.transform(pil)
         return tensor / 255.
 
-flowers_dataset = OxfordFlowersDataset(
-    image_size = 64
-)
-
 # models and trainer
 
-from rectified_flow_pytorch import NanoFlow, Unet, Trainer
+from rectified_flow_pytorch import NanoFlow, Unet, Trainer, XMWrapper
 
-model = Unet(dim = 64)
-
-nano_flow = NanoFlow(
-    model,
-    predict_clean = True,
-    times_cond_kwarg = 'times',
-    normalize_data_fn = lambda t: t * 2. - 1.,
-    unnormalize_data_fn = lambda t: (t + 1.) / 2.
-)
-
-trainer = Trainer(
-    nano_flow,
-    dataset = flowers_dataset,
+def train(
+    candidates = 4,
+    batch_size = 4,
+    grad_accum_every = 4,
+    results_folder = './results',
+    checkpoints_folder = './checkpoints',
     num_train_steps = 70_000,
-    results_folder = './results'   # samples will be saved periodically to this folder
-)
+    learning_rate = 3e-4,
+    image_size = 64,
+    dim = 64
+):
 
-trainer()
+    flowers_dataset = OxfordFlowersDataset(
+        image_size = image_size
+    )
+
+    model = Unet(dim = dim)
+
+    nano_flow = NanoFlow(
+        model,
+        predict_clean = True,
+        times_cond_kwarg = 'times',
+        normalize_data_fn = lambda t: t * 2. - 1.,
+        unnormalize_data_fn = lambda t: (t + 1.) / 2.
+    )
+
+    if candidates > 1:
+        nano_flow = XMWrapper(nano_flow, candidates = candidates)
+
+    trainer = Trainer(
+        nano_flow,
+        dataset = flowers_dataset,
+        batch_size = batch_size,
+        grad_accum_every = grad_accum_every,
+        num_train_steps = num_train_steps,
+        learning_rate = learning_rate,
+        results_folder = results_folder,
+        checkpoints_folder = checkpoints_folder,
+        clear_results_folder = True
+    )
+
+    trainer()
+
+if __name__ == '__main__':
+    fire.Fire(train)

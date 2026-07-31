@@ -431,14 +431,14 @@ class LapFlow(Module):
             dt = (t_end - t_start) / step_count
 
             times = torch.linspace(t_start, t_end, step_count + 1, device=device)
-            
+
             # 1 for coarse, 2 for mid, 3 for fine
-            active_count = i + 1 
+            active_count = i + 1
 
             for time in times[:-1]:
                 time_val = time.item()
                 time_tensor = repeat(torch.tensor([time_val], device=device), '1 -> b', b=batch_size)
- 
+
                 time_kwarg = {self.times_cond_kwarg: time_tensor} if exists(self.times_cond_kwarg) else dict()
 
                 # only pass the active states to the model

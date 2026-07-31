@@ -27,3 +27,5 @@ from rectified_flow_pytorch.self_flow import SelfFlow
 from rectified_flow_pytorch.ua_flow import UAFlow
 
 from rectified_flow_pytorch.lap_flow import LapFlow, LapFlowDiT
+
+from rectified_flow_pytorch.xm_wrapper import XMWrapper
