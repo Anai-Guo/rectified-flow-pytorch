@@ -71,6 +71,9 @@ class XMWrapper(Module):
         first_tensor = next(t for t in leaves if is_tensor(t))
         batch = first_tensor.shape[0]
 
+        if 'times' not in kwargs:
+            kwargs['times'] = torch.rand(batch, device = first_tensor.device)
+
         # repeat inputs K candidates times
 
         args_K, kwargs_K = tree_map(

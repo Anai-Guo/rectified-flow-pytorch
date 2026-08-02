@@ -427,6 +427,7 @@ class RectifiedFlow(Module):
         self,
         data,
         noise: Tensor | None = None,
+        times: Tensor | None = None,
         return_loss_breakdown = False,
         **model_kwargs
     ):
@@ -449,7 +450,7 @@ class RectifiedFlow(Module):
 
         # times, and times with dimension padding on right
 
-        times = torch.rand(batch, device = self.device)
+        times = default(times, torch.rand(batch, device = self.device))
 
         # maybe cap times when predicting clean
 
